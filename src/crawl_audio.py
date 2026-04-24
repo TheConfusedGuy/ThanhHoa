@@ -150,7 +150,7 @@ import json
 from datetime import datetime
 
 def download_youtube_audio():
-    ffmpeg_path = r"D:\Slide 28 tech\ffmpeg-8.1-essentials_build\ffmpeg-8.1-essentials_build\bin"
+    ffmpeg_path = r"D:\Slide 28 tech\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin"
     output_base_dir = "Am_Thanh_Data"
     metadata_file = "metadata.json" 
     

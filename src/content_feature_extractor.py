@@ -1,9 +1,10 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import whisper
 import soundfile as sf
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-# from sentence_transformers import SentenceTransformer  # Temporarily disabled
+from sentence_transformers import SentenceTransformer
+import yake
+from pyvi import ViTokenizer
 import tempfile
 import os
 
@@ -11,8 +12,20 @@ class ContentFeatureExtractor:
     def __init__(self):
         print('Loading Whisper model...')
         self.whisper_model = whisper.load_model('base')
-        # self.embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')  # Temporarily disabled
-        self.tfidf_vectorizer = TfidfVectorizer(max_features=100, stop_words='english')
+
+        # Content Vector model: đa ngôn ngữ, hỗ trợ tiếng Việt, output 384 chiều
+        print('Loading SentenceTransformer model (paraphrase-multilingual-MiniLM-L12-v2)...')
+        self.embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+        # YAKE keyword extractor — khởi tạo sẵn, tái sử dụng cho hiệu quả
+        # lan='vi' để tối ưu cho tiếng Việt, n=2 cho phép bigram
+        self.yake_extractor = yake.KeywordExtractor(
+            lan='vi',
+            n=2,            # khai thác cả unigram và bigram
+            dedupLim=0.7,   # ngưỡng loại trừ từ khóa trùng lặp
+            top=10,         # số từ khóa trả về
+            features=None
+        )
 
     def transcribe_audio(self, audio_path):
         try:
@@ -51,27 +64,86 @@ class ContentFeatureExtractor:
             print(f'Error transcribing {audio_path}: {e}')
             return ''
 
-    def extract_tfidf_keywords(self, text):
+    def extract_keywords(self, text: str, max_keywords: int = 10) -> dict:
+        """
+        Trích xuất từ khóa quan trọng từ văn bản tiếng Việt.
+
+        Quy trình 2 bước:
+          1. pyvi.ViTokenizer.tokenize() — tách từ tiếng Việt đúng ngữ pháp
+             (ví dụ: "học sinh" giữ nguyên, không tách thành "học" + "sinh")
+          2. yake.KeywordExtractor — thuật toán unsupervised, không cần corpus huấn luyện
+             (YAKE score: thấp hơn = quan trọng hơn → đảo nghiịch để chuẩn hóa về [0, 1])
+
+        Args:
+            text (str): Văn bản tiếng Việt (transcript từ Whisper).
+            max_keywords (int): Số từ khóa cần trả về.
+
+        Returns:
+            dict: {từ_khóa: importance_score}  — score ∈ [0, 1], cao hơn = quan trọng hơn.
+        """
         try:
-            if not text:
+            if not text or not text.strip():
                 return {}
-            tfidf_matrix = self.tfidf_vectorizer.fit_transform([text])
-            feature_names = self.tfidf_vectorizer.get_feature_names_out()
-            scores = tfidf_matrix.toarray()[0]
-            keywords = {feature_names[i]: float(scores[i]) for i in scores.argsort()[-10:][::-1] if scores[i] > 0}
-            return keywords
+
+            # Bước 1: Tách từ tiếng Việt
+            tokenized = ViTokenizer.tokenize(text)
+
+            # Bước 2: Trích xuất từ khóa bằng YAKE
+            raw_keywords = self.yake_extractor.extract_keywords(tokenized)
+            # raw_keywords: [(keyword, yake_score), ...] — score thấp = quan trọng hơn
+
+            if not raw_keywords:
+                return {}
+
+            # Bước 3: Chuẩn hóa score về [0, 1] (importance = 1 - normalized_yake_score)
+            max_score = max(score for _, score in raw_keywords)
+            if max_score == 0:
+                return {kw: 1.0 for kw, _ in raw_keywords[:max_keywords]}
+
+            result = {
+                kw.strip(): round(1.0 - (score / max_score), 4)
+                for kw, score in raw_keywords[:max_keywords]
+                if kw.strip()
+            }
+            # Sắp xếp giảm dần theo mức quan trọng
+            return dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
+
         except Exception as e:
-            print(f'Error extracting TF-IDF: {e}')
+            print(f'[ERROR] extract_keywords: {e}')
             return {}
 
     def extract_semantic_embeddings(self, text):
+        """
+        Trích xuất Content Vector từ văn bản bằng SentenceTransformer.
+        Mô hình: paraphrase-multilingual-MiniLM-L12-v2 (hỗ trợ tiếng Việt)
+        Output: vector 384 chiều (float list)
+        """
         try:
             if not text:
                 return []
-            # Temporarily return empty list
-            # embeddings = self.embedding_model.encode([text])[0]
-            # return embeddings.tolist()
-            return []
+            # Mã hóa văn bản thành vector ngữ nghĩa 384 chiều
+            embedding = self.embedding_model.encode([text], convert_to_numpy=True)[0]
+            return embedding.tolist()
         except Exception as e:
-            print(f'Error extracting embeddings: {e}')
+            print(f'Error extracting semantic embeddings: {e}')
             return []
+
+    def l2_normalize(self, vector):
+        """
+        Áp dụng chuẩn hóa L2 (L2 Normalization) cho một vector.
+        Đưa vector về độ dài đơn vị (unit norm) trước khi so sánh cosine.
+
+        Args:
+            vector (list | np.ndarray): Vector đầu vào cần chuẩn hóa.
+
+        Returns:
+            list: Vector đã được chuẩn hóa L2, hoặc [] nếu vector rỗng / norm == 0.
+        """
+        if not vector:
+            return []
+        vec = np.array(vector, dtype=np.float32)
+        norm = np.linalg.norm(vec)
+        if norm == 0:
+            print('[WARNING] L2 norm = 0, không thể chuẩn hóa vector nội dung.')
+            return vec.tolist()
+        return (vec / norm).tolist()
