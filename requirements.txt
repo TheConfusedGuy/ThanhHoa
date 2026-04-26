@@ -1,0 +1,14 @@
+numpy
+librosa
+soundfile
+openai-whisper
+sentence-transformers
+yake
+pyvi
+faiss-cpu
+mysql-connector-python
+yt-dlp
+speechbrain
+torch
+tqdm
+Unidecode

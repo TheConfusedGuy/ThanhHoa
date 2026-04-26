@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Cursor/IDE artifacts
+.cursor/
+
+# Runtime artifacts (keep folder structure only)
+src/artifacts/**
+!src/artifacts/stage1/.gitkeep
+!src/artifacts/faiss/.gitkeep
+!src/artifacts/eval_outputs/.gitkeep
