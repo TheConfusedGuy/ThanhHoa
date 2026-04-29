@@ -13,10 +13,12 @@ Muc tieu: tach ro code, du lieu, va artifact de khong bi roi.
 
 - `stage1/`: chuan bi du lieu (crawl, preprocess, index metadata)
 - `stage2/`: trich xuat dac trung noi dung + giong noi, tai lieu 2.1/2.2
+- `stage3/`: build CSDL lai SQLite + FAISS, truy van top-3 content/voice
 
 ## Tai lieu
 
 - `../docs/`: toan bo tai lieu bao cao va checklist
+  - bo sung `STAGE3_3a.md`, `STAGE3_3b.md` cho Giai doan 3
 
 ## Du lieu
 

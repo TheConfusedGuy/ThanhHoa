@@ -38,11 +38,33 @@ class Stage1Config:
     dry_run: bool
 
 
+def _resolve_default_path(env_key: str, candidates: Tuple[str, ...]) -> str:
+    env_value = os.getenv(env_key, "").strip()
+    if env_value:
+        return env_value
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return candidate
+    return candidates[0]
+
+
 def parse_args() -> Stage1Config:
     parser = argparse.ArgumentParser(description="Stage 1 - Audio data preparation.")
-    parser.add_argument("--input-dir", default=os.getenv("AUDIO_DIR", "Am_Thanh_Data"))
-    parser.add_argument("--output-dir", default=os.getenv("PROCESSED_AUDIO_DIR", "Processed_Audio_Data"))
-    parser.add_argument("--rejected-dir", default=os.getenv("REJECTED_AUDIO_DIR", "Rejected_Audio_Data"))
+    parser.add_argument(
+        "--input-dir",
+        default=_resolve_default_path("AUDIO_DIR", ("src/Am_Thanh_Data", "Am_Thanh_Data")),
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=_resolve_default_path(
+            "PROCESSED_AUDIO_DIR",
+            ("src/Processed_Audio_Data", "Processed_Audio_Data"),
+        ),
+    )
+    parser.add_argument(
+        "--rejected-dir",
+        default=_resolve_default_path("REJECTED_AUDIO_DIR", ("src/Rejected_Audio_Data", "Rejected_Audio_Data")),
+    )
     parser.add_argument("--index-csv", default="src/artifacts/stage1/dataset_index.csv")
     parser.add_argument("--summary-json", default="src/artifacts/stage1/dataset_prep_summary.json")
     parser.add_argument("--metadata-path", default=os.getenv("CRAWL_METADATA_FILE", "src/artifacts/stage1/metadata.json"))

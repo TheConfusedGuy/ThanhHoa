@@ -45,12 +45,19 @@ class ContentFeatureExtractor:
             features=None,
         )
 
-    def transcribe_audio(self, audio_path: str) -> str:
+    def transcribe_audio(self, audio_path: str, max_duration_s: float | None = None) -> str:
         """
         STT: chuyen am thanh thanh van ban.
         """
         try:
-            result = self.whisper_model.transcribe(audio_path, language="vi")
+            if max_duration_s and max_duration_s > 0:
+                audio = whisper.load_audio(audio_path)
+                max_samples = int(max_duration_s * 16000)
+                if audio.shape[0] > max_samples:
+                    audio = audio[:max_samples]
+                result = self.whisper_model.transcribe(audio, language="vi")
+            else:
+                result = self.whisper_model.transcribe(audio_path, language="vi")
             return (result.get("text") or "").strip()
         except Exception as exc:
             print(f"[Stage2][Content][ERROR] transcribe_audio: {audio_path} -> {exc}")

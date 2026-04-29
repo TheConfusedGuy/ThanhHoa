@@ -20,7 +20,17 @@ except ImportError:
     from core.db_manager import DatabaseManager
 
 
-AUDIO_DIR = os.getenv("AUDIO_DIR", "src/Processed_Audio_Data")
+def _resolve_audio_dir() -> str:
+    env_value = os.getenv("AUDIO_DIR", "").strip()
+    if env_value:
+        return env_value
+    for candidate in ("src/Processed_Audio_Data", "Processed_Audio_Data", "src/Am_Thanh_Data", "Am_Thanh_Data"):
+        if os.path.exists(candidate):
+            return candidate
+    return "src/Processed_Audio_Data"
+
+
+AUDIO_DIR = _resolve_audio_dir()
 BATCH_SAVE_INTERVAL = int(os.getenv("FAISS_SAVE_INTERVAL", "20"))
 
 

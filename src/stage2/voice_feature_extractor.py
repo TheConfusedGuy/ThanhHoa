@@ -15,7 +15,11 @@ from typing import Dict, List
 import librosa
 import numpy as np
 import torch
-import torchaudio
+
+
+def _safe_text(text: object) -> str:
+    # Avoid Windows cp1252 crash when logging Unicode paths.
+    return str(text).encode("ascii", errors="replace").decode("ascii", errors="replace")
 
 
 class VoiceFeatureExtractor:
@@ -27,7 +31,7 @@ class VoiceFeatureExtractor:
         self.sample_rate = sample_rate
         self._ecapa_model = None
 
-    def extract_acoustic_features(self, audio_path: str) -> Dict[str, object]:
+    def extract_acoustic_features(self, audio_path: str, max_duration_s: float | None = None) -> Dict[str, object]:
         """
         Trich xuat:
         - MFCC (mean, std)
@@ -35,7 +39,8 @@ class VoiceFeatureExtractor:
         - Energy RMS (mean, std)
         - ZCR (mean, std)
         """
-        y, sr = librosa.load(audio_path, sr=self.sample_rate)
+        duration = max_duration_s if max_duration_s and max_duration_s > 0 else None
+        y, sr = librosa.load(audio_path, sr=self.sample_rate, duration=duration)
 
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
         mfccs_mean = np.mean(mfccs, axis=1)
@@ -67,36 +72,39 @@ class VoiceFeatureExtractor:
 
     def _load_ecapa_model(self):
         if self._ecapa_model is None:
+            import speechbrain
             from speechbrain.inference.speaker import EncoderClassifier
+            from speechbrain.utils.fetching import LocalStrategy
 
+            speechbrain.__dict__["k2_integration"] = None
             print("[Stage2][Voice] Loading ECAPA-TDNN model...")
             self._ecapa_model = EncoderClassifier.from_hparams(
                 source="speechbrain/spkrec-ecapa-voxceleb",
                 savedir="pretrained_models/spkrec-ecapa-voxceleb",
+                local_strategy=LocalStrategy.COPY,
                 run_opts={"device": "cuda" if torch.cuda.is_available() else "cpu"},
             )
         return self._ecapa_model
 
-    def extract_speaker_embeddings(self, audio_path: str) -> List[float]:
+    def extract_speaker_embeddings(self, audio_path: str, max_duration_s: float | None = None) -> List[float]:
         """
         Trich xuat speaker embedding 192-d tu ECAPA-TDNN.
         """
         try:
+            duration = max_duration_s if max_duration_s and max_duration_s > 0 else None
+            y, _ = librosa.load(audio_path, sr=self.sample_rate, mono=True, duration=duration)
+            waveform = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
             model = self._load_ecapa_model()
-            waveform, sr = torchaudio.load(audio_path)
-
-            if sr != self.sample_rate:
-                resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=self.sample_rate)
-                waveform = resampler(waveform)
-            if waveform.shape[0] > 1:
-                waveform = waveform.mean(dim=0, keepdim=True)
 
             with torch.no_grad():
                 embeddings = model.encode_batch(waveform)
             vector = embeddings.squeeze().cpu().numpy().tolist()
             return vector if isinstance(vector, list) else [float(vector)]
         except Exception as exc:
-            print(f"[Stage2][Voice][ERROR] extract_speaker_embeddings: {audio_path} -> {exc}")
+            print(
+                f"[Stage2][Voice][ERROR] extract_speaker_embeddings: "
+                f"{_safe_text(audio_path)} -> {_safe_text(exc)}"
+            )
             return []
 
     @staticmethod
