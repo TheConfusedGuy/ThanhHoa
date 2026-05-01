@@ -6,10 +6,13 @@ Toàn bộ code liên quan yêu cầu 2 đã đặt trong `src/stage2/`:
 
 - `content_feature_extractor.py`
 - `voice_feature_extractor.py`
-- `batch_feature_extraction.py`
+- `batch_feature_extraction.py` → output: `src/artifacts/stage2/stage2_features.jsonl`
+- `repair_stage2_records.py` — sửa vài dòng JSONL thiếu embedding / STT lỗi
 - `demo_content_extractor.py`
 - `Tài_liệu_2.1.md`
 - `Tài_liệu_2.2.md`
+
+**Luồng batch đầy đủ:** `docs/CLONE_AND_RUN.md`. **Mục lục:** `docs/README.md`.
 
 `src/core/main.py` và `src/core/retrieval.py` đã cập nhật import sang `stage2.*`.
 

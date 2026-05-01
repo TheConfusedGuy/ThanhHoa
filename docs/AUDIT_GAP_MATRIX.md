@@ -1,37 +1,47 @@
-# Ma trận đối chiếu Đề bài - Kế hoạch - Hiện trạng
+# Ma trận đối chiếu Đề bài — Hiện trạng — Tài liệu chứng minh
 
-Tài liệu này chốt nhanh trạng thái "đã đạt/chưa đạt" để bám sát rubric trước khi scale lên 500 file.
+Tài liệu cập nhật để phản ánh **luồng báo cáo khuyến nghị**: Stage 1→4 (`stage1`…`stage4`) với **SQLite + FAISS**, đồng thời ghi nhận nhánh **`src/core/`** (MySQL + đánh giá formal).
+
+**Mục lục chi tiết + lệnh chạy + output:** `docs/README.md`.
+
+---
 
 ## 1) Yêu cầu đề bài
 
-| Mục đề bài | Ý nghĩa rubric | Hiện trạng dự án | Đánh giá |
-|---|---|---|---|
-| 1. Bộ dữ liệu âm thanh chủ đề rõ ràng, 1 người nói/file | Có dữ liệu, có cấu trúc metadata, có chuẩn hóa cơ bản | Có script crawl + metadata + archive tải; chưa đóng gói tiêu chuẩn dữ liệu thành tài liệu chuẩn | Đạt một phần |
-| 2. Thuộc tính nhận diện nội dung và giọng nói + giải thích lý do | Có đặc trưng nội dung và giọng nói, giải thích nguyên lý trích xuất | Có Whisper + YAKE + sentence embedding; có MFCC + ECAPA; giải thích nằm rải rác trong code, chưa có tài liệu báo cáo chính thức | Đạt kỹ thuật, thiếu hồ sơ |
-| 3. Tìm kiếm đầu vào mới, trả top-3 nội dung và top-3 giọng | Có pipeline truy vấn chạy được, xếp theo similarity giảm dần | `retrieval.py` đã trả 2 nhánh top-k (mặc định 3), có in kết quả và lưu JSON | Đạt |
-| 3a. Sơ đồ khối + quy trình | Có thể mô tả được kiến trúc và luồng xử lý | Chưa có file sơ đồ chính thức cho báo cáo | Chưa đạt hồ sơ |
-| 3b. Trình bày trích rút, lưu CSDL, kết quả trung gian | Cần mô tả rõ cách lưu, truy vấn, và log trung gian | Có MySQL + FAISS + JSON output; chưa có tài liệu tổng hợp chuẩn rubric | Đạt kỹ thuật, thiếu hồ sơ |
-| 4. Demo và đánh giá kết quả | Cần demo chạy thật + chỉ số định lượng | Có CLI demo; chưa có script metric tổng hợp | Đạt một phần |
+| Mục đề bài | Ý nghĩa rubric | Hiện trạng & chứng cứ | Đánh giá |
+|------------|----------------|------------------------|----------|
+| **1.** Bộ dữ liệu ≥500*, chủ đề rõ, 1 speaker/file (theo thiết kế), chuẩn hóa | Dữ liệu + metadata + WAV chuẩn | `crawl_audio.py`, `Processed_Audio_Data/`, `artifacts/stage1/dataset_index.csv`; kiểm vector/index: `database_build_summary.json` | **Đạt** khi đã crawl/build đủ (môi trường cục bộ) |
+| **2.** Thuộc tính nội dung + giọng + **lý do & nguyên lý** | Đặc trưng đúng danh mục + báo cáo | Code `stage2/`; **`src/stage2/Tài_liệu_2.1.md`**, **`Tài_liệu_2.2.md`**; `STAGE2_STATUS.md` | **Đạt** |
+| **3.** Tìm kiếm file mới → top-3 nội dung + top-3 giọng (similarity giảm dần) | Hai nhánh retrieval | `retrieval_top3.py`, `run_requirement3_pipeline.py`; log JSON | **Đạt** |
+| **3a.** Sơ đồ khối + quy trình | Hồ sơ báo cáo | **`docs/STAGE3_3a.md`** (Mermaid + thuật toán Top-3) | **Đạt** |
+| **3b.** Trích rút, lưu CSDL, kết quả trung gian | Mô tả + log | **`docs/STAGE3_3b.md`**; `distance_matrix_logs` trong JSON query | **Đạt** |
+| **4.** Demo & đánh giá | Chạy thật + nhận xét seen/unseen | `stage4/demo_cli.py`; `requirement3_query_logs.json`; metric formal có thể thêm qua `core/evaluate_retrieval.py` | **Đạt** (CLI); GUI upload là **tùy chọn** |
 
-## 2) Đối chiếu theo kế hoạch 4 giai đoạn
+\*500: không kiểm trong Git (âm thanh/artifact thường `.gitignore`); chứng minh trên máy chạy pipeline.
 
-| Giai đoạn | Kế hoạch | Hiện trạng | Mức độ |
-|---|---|---|---|
-| GĐ1 - Dữ liệu | Chuẩn tiêu chuẩn, thu thập, kiểm duyệt, tiền xử lý | Có crawl + metadata; chưa có checklist kiểm duyệt thống nhất và tài liệu chuẩn dữ liệu | Trung bình |
-| GĐ2 - Đặc trưng & báo cáo | Chọn thuộc tính, giải thích nguyên lý, script tự động | Script lõi đã có; thiếu tài liệu report độc lập | Tốt về kỹ thuật |
-| GĐ3 - CSDL & tìm kiếm | Thiết kế DB, lưu vector, top-3 content/voice, kết quả trung gian | Hoàn chỉnh ở mức chạy hệ thống; cần tối ưu batch và nhất quán thuật ngữ | Tốt |
-| GĐ4 - Demo & đánh giá | Test seen/unseen, UI/CLI, kết luận | Có CLI; chưa có bộ đánh giá định lượng chuẩn | Trung bình |
+---
 
-## 3) Các gap quan trọng cần xử lý trước khi scale 500 file
+## 2) Đối chiếu bốn giai đoạn kế hoạch
 
-1. Chốt bộ test nhanh (30-80 file) có nhãn nhẹ (topic_id, speaker_id) để đo precision@3.
-2. Chuẩn hóa thuật ngữ nội dung (tránh nhầm TF-IDF và YAKE trong phần trình bày).
-3. Tách cấu hình nhạy cảm ra biến môi trường (`DB_PASSWORD`, `FFMPEG_PATH`, ...).
-4. Giảm ghi đĩa FAISS theo từng file bằng cơ chế commit theo lô.
-5. Thêm script đánh giá để xuất kết quả trung gian và chỉ số định lượng phục vụ demo/báo cáo.
+| Giai đoạn | Kế hoạch | Hiện trạng | Tài liệu |
+|-----------|-----------|------------|----------|
+| **GĐ1** | Chuẩn, thu thập, QC, tiền xử lý, chỉ mục | Crawler + FFmpeg + CSV manifest | `STAGE1_STATUS.md`, `CLONE_AND_RUN.md` |
+| **GĐ2** | Thuộc tính + lý thuyết + batch | Batch JSONL + tài liệu 2.1/2.2 | `STAGE2_STATUS.md`, `Tài_liệu_2.*` |
+| **GĐ3** | DB + vector + top-3 + log | SQLite + FAISS `IndexFlatIP` + L2 | `STAGE3_3a.md`, `STAGE3_3b.md` |
+| **GĐ4** | Demo seen/unseen + đánh giá | Pipeline query + CLI demo | `CLONE_AND_RUN.md`, `METRICS_LOGGING_GUIDE.md` |
 
-## 4) Kết luận phản biện
+---
 
-- Tư duy kiến trúc của kế hoạch là đúng và có logic triển khai.
-- Dự án hiện tại mạnh ở phần "kỹ thuật lõi", yếu ở phần "hồ sơ chứng minh" và "đánh giá định lượng".
-- Chiến lược test nhanh trước, scale 500 sau là lựa chọn đúng để giảm chi phí thử-sai.
+## 3) Gợi ý cải tiến (không chặn nộp đồ án)
+
+1. **Thống nhất một luồng trong báo cáo:** Stage 3 SQLite hoặc Core MySQL — tránh trình bày lẫn hai kiến trúc như một.  
+2. **Audit YC1:** mở rộng `audit_requirements_1_2.py` cho schema **`crawl_audio`** hoặc export CSV thứ hai cho audit.  
+3. **`precision@k` formal:** chạy `evaluate_retrieval.py` với manifest tương thích nhánh Core — hoặc bổ script đánh giá cho đường Stage 3.
+
+---
+
+## 4) Kết luận
+
+- **Hồ sơ:** đã có đủ mục 3a/3b và tài liệu Stage 2 trong repo.  
+- **Chạy được:** luồng `run_requirement3_pipeline.py` + `demo_cli.py`.  
+- **Người clone:** đọc `CLONE_AND_RUN.md` để tái tạo artifact.

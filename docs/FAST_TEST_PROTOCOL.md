@@ -1,6 +1,7 @@
 # Protocol test nhanh (30-80 file) trước khi scale 500
 
-Mục tiêu: test đầy đủ pipeline end-to-end nhưng vẫn nhanh, để chốt kỹ thuật trước khi crawl và index toàn bộ 500 file.
+> **Định hướng hiện tại:** Luồng báo cáo chính dùng **Stage 3** (SQLite + FAISS): xem **`docs/README.md`** và **`docs/CLONE_AND_RUN.md`**.  
+> Phần dưới đây mô tả pilot qua **`src/core/`** (MySQL + `retrieval.py`) — vẫn hữu ích nếu bạn giữ nhánh đánh giá `evaluate_retrieval.py`; có thể **mirror** ý tưởng split seen/unseen bằng `dataset_index.csv` của crawler.
 
 ## 1) Quy mô đề xuất
 

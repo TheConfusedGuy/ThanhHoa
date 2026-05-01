@@ -47,21 +47,33 @@ class ContentFeatureExtractor:
 
     def transcribe_audio(self, audio_path: str, max_duration_s: float | None = None) -> str:
         """
-        STT: chuyen am thanh thanh van ban.
+        STT: chuyển âm thanh thành văn bản.
+        Thử vi → auto → en nếu kết quả rỗng (clip đa ngữ / SNR thấp).
         """
-        try:
-            if max_duration_s and max_duration_s > 0:
-                audio = whisper.load_audio(audio_path)
-                max_samples = int(max_duration_s * 16000)
-                if audio.shape[0] > max_samples:
-                    audio = audio[:max_samples]
-                result = self.whisper_model.transcribe(audio, language="vi")
-            else:
-                result = self.whisper_model.transcribe(audio_path, language="vi")
-            return (result.get("text") or "").strip()
-        except Exception as exc:
-            print(f"[Stage2][Content][ERROR] transcribe_audio: {audio_path} -> {exc}")
-            return ""
+
+        def run(language: str | None) -> str:
+            try:
+                kwargs: Dict[str, object] = {}
+                if language is not None:
+                    kwargs["language"] = language
+                if max_duration_s and max_duration_s > 0:
+                    audio = whisper.load_audio(audio_path)
+                    max_samples = int(max_duration_s * 16000)
+                    if audio.shape[0] > max_samples:
+                        audio = audio[:max_samples]
+                    result = self.whisper_model.transcribe(audio, **kwargs)
+                else:
+                    result = self.whisper_model.transcribe(audio_path, **kwargs)
+                return (result.get("text") or "").strip()
+            except Exception as exc:
+                print(f"[Stage2][Content][ERROR] transcribe_audio: {audio_path} ({language}) -> {exc}")
+                return ""
+
+        for lang in ("vi", None, "en"):
+            text = run(lang)
+            if text:
+                return text
+        return ""
 
     def extract_keywords(self, text: str, max_keywords: int = 10) -> Dict[str, float]:
         """

@@ -30,13 +30,13 @@ Lưu ý phạm vi: bám đồ án môn học, ưu tiên quy trình đơn giản 
 
 **Đã làm:**
 - Có script crawl YouTube: `src/stage1/crawl_audio.py`.
-- Có metadata nguồn và download archive.
-- Crawler đã xuất theo cấu trúc mặc định `speaker/topic/file` để khớp parser nhãn của Stage 1.
+- Có metadata nguồn và download archive (`download_archive`).
+- Crawler xuất WAV chuẩn và ghi `src/artifacts/stage1/dataset_index.csv` kèm **`split_role`** (`index` / `query_seen` / `query_unseen`) phục vụ YC3–4.
 
-**Chưa làm đủ theo đề (500 file):**
-- Chưa chốt đủ số lượng 500 ở giai đoạn hiện tại (theo yêu cầu tạm hoãn).
+**Mục tiêu ≥500 file (index):**
+- Do chính sách crawler (`max-index-per-playlist`, số playlist) và **không** được đẩy lên Git — kiểm chứng cục bộ: đếm dòng `split_role=index` trong CSV hoặc xem `database_build_summary.json` sau Stage 3.
 
-**Đánh giá:** Đạt một phần (đã có cơ chế thu thập, chưa đạt số lượng mục tiêu).
+**Đánh giá:** Đạt khi máy chủ đã chạy đủ crawl/pipeline theo đề; repo chỉ chứa **code**, không chứa toàn bộ WAV (xem `docs/CLONE_AND_RUN.md`).
 
 ## 3) Tiêu chí: Kiểm duyệt mỗi file có 1 chủ đề và 1 người nói
 
@@ -62,21 +62,20 @@ Lưu ý phạm vi: bám đồ án môn học, ưu tiên quy trình đơn giản 
 
 ## 5) Tiêu chí: Lập chỉ mục thống kê file
 
-**Đã làm:**
-- Tạo `dataset_index.csv` chứa:
-  - `file_id`, `filename`, `source_path`, `processed_file_path`
-  - `source_url`
-  - `speaker_id`, `topic_id`
-  - thông số kỹ thuật (`sample_rate`, `duration_sec`)
-  - trạng thái và lỗi QC (`status`, `issues`)
-- Tạo `dataset_prep_summary.json` tổng hợp `pass_count`, `fail_count`,
-  `unknown_topic_count`, `unknown_speaker_count`, `pass_rate`.
+**Đã làm — hai kiểu CSV có thể tồn tại:**
 
-**Đánh giá:** Đạt.
+1. **`cli.py` / `pipeline.py`:** CSV kiểu báo cáo QC với `status`, `duration_sec`, `issues`, … — **khớp** `src/core/audit_requirements_1_2.py` phần Stage 1.
+2. **`crawl_audio.py`:** CSV crawler với `file_id`, `filepath`, `playlist_url`, `video_url`, `split_role`, `duration`, … — **phục vụ** Stage 3 (lọc `index`), nhưng **không khớp** audit Stage 1 hiện tại (xem `docs/REQ12_COMPLETION.md`).
 
-## Kết luận Giai đoạn 1 (không tính ràng buộc 500 file)
+**Đánh giá:** Đạt chức năng chỉ mục; khi viết báo cáo cần **nêu rõ đang dùng schema nào**.
 
-- Các tiêu chí kỹ thuật cốt lõi của Giai đoạn 1 đã được hoàn thiện.
-- Phần còn lại để "đạt tuyệt đối theo đề" là:
-  1) mở rộng số lượng dữ liệu lên >= 500 file,
-  2) hoàn thiện kiểm duyệt nhãn speaker/topic cho các file đang `REVIEW`.
+## Kết luận Giai đoạn 1
+
+- Chuẩn dữ liệu, crawl, tiền xử lý và chỉ mục đã có đủ module.
+- **Luồng báo cáo khuyến nghị:** `docs/README.md` → **`CLONE_AND_RUN.md`** (tái tạo WAV + CSV cục bộ).
+
+---
+
+## Liên kết
+
+- Mục lục tài liệu + map yêu cầu: **`docs/README.md`**

@@ -8,17 +8,28 @@ Muc tieu: tach ro code, du lieu, va artifact de khong bi roi.
 - `core/retrieval.py`: truy van top-k content/voice
 - `core/db_manager.py`, `core/faiss_manager.py`: lop ha tang luu tru/tim kiem
 - `core/evaluate_retrieval.py`: danh gia retrieval
+- `core/audit_requirements_1_2.py`: audit PASS/FAIL cho Yeu cau 1-2 (khong tinh 500 file)
 
 ## Theo giai doan
 
 - `stage1/`: chuan bi du lieu (crawl, preprocess, index metadata)
 - `stage2/`: trich xuat dac trung noi dung + giong noi, tai lieu 2.1/2.2
 - `stage3/`: build CSDL lai SQLite + FAISS, truy van top-3 content/voice
+  - `run_requirement3_pipeline.py`: chay end-to-end theo split index/query_seen/query_unseen
 
-## Tai lieu
+## Theo giai đoạn
 
-- `../docs/`: toan bo tai lieu bao cao va checklist
-  - bo sung `STAGE3_3a.md`, `STAGE3_3b.md` cho Giai doan 3
+- `stage1/`: chuan bi du lieu (crawl, preprocess, index metadata)
+- `stage2/`: trich xuat dac trung noi dung + giong noi, tai lieu 2.1/2.2
+- `stage3/`: build CSDL lai SQLite + FAISS, truy van top-3 content/voice
+  - `run_requirement3_pipeline.py`: chay end-to-end theo split index/query_seen/query_unseen
+- `stage4/`: CLI demo hai cot ket qua (`demo_cli.py`)
+
+## Tai lieu (muc luc)
+
+- **`docs/README.md`**: muc luc tai lieu dinh kem + map yeu cau de / lenh chay / artifact dau ra
+- **`docs/CLONE_AND_RUN.md`**: clone nhe, tai tao pipeline
+- Con lai trong `docs/`: STAGE*_STATUS, STAGE3_3a/b, REQ12, AUDIT_GAP_MATRIX, ...
 
 ## Du lieu
 

@@ -1,6 +1,6 @@
 # Checklist sẵn sàng scale lên 500 file
 
-Tài liệu này dùng như gate trước khi chạy batch cuối.
+**Luồng chạy chi tiết:** `docs/CLONE_AND_RUN.md`. **Mục lục tài liệu:** `docs/README.md`.
 
 ## 0. Phạm vi môn học (để tránh over-engineering)
 
@@ -27,12 +27,22 @@ Tài liệu này dùng như gate trước khi chạy batch cuối.
 - [x] Save FAISS theo lô + save nốt ở cuối run.
 - [x] Giữ cơ chế skip file đã tồn tại để tránh index trùng.
 
-## D. Checklist chạy production 500 file
+## D. Checklist chạy production 500 file (luồng Stage 3 — khuyến nghị)
 
-1. Tạo môi trường và cài dependencies.
-2. Điền biến môi trường trong `.env`.
-3. Crawl dữ liệu đủ 500 file, chuẩn hóa thư mục dữ liệu.
-4. Chạy index batch: `python src/core/main.py`.
-5. Chạy truy vấn mẫu: `python src/core/retrieval.py <query_file> 3`.
-6. Chạy đánh giá pilot/final: `python src/core/evaluate_retrieval.py --manifest <manifest.csv> --top-k 3`.
-7. Lưu summary + log trung gian cho báo cáo.
+1. Môi trường + `pip install -r requirements.txt`, FFmpeg (`PATH` hoặc `FFMPEG_PATH`).
+2. `python src/stage1/crawl_audio.py` (hoặc đặt WAV đúng cấu trúc + rebuild CSV).
+3. `python src/stage2/batch_feature_extraction.py --input-dir src/Processed_Audio_Data --output-jsonl src/artifacts/stage2/stage2_features.jsonl ...`
+4. `python src/stage3/run_requirement3_pipeline.py` (build DB chỉ `split_role=index` + chạy query seen/unseen).
+5. Kiểm `database_build_summary.json` (`inserted_records` / vector = kỳ vọng).
+6. Demo: `python src/stage4/demo_cli.py "<wav>"`.
+7. Lưu copy log JSON cho báo cáo.
+
+## D2. Checklist thay thế (nhánh `src/core/` + MySQL)
+
+1. Biến môi trường `.env` cho DB.
+2. Chạy index batch: `python src/core/main.py`.
+3. Truy vấn mẫu: `python src/core/retrieval.py <query_file> 3`.
+4. Đánh giá: `python src/core/evaluate_retrieval.py --manifest <manifest.csv> --top-k 3`.
+5. Lưu summary + log trung gian.
+
+**Ghi chú:** Mục **C. Batch indexing** (save FAISS theo lô) áp dụng chủ yếu cho **`src/core/main.py`**. Luồng Stage 3 build FAISS một lần trong `database_builder.py`.

@@ -1,10 +1,13 @@
 # Tài liệu 3b - Ghi chép lưu DB, truy vấn và log trung gian
 
+**Mục lục & luồng chạy toàn đồ án:** `docs/README.md`.
+
 ## 1) Quá trình lưu CSDL lai
 
 Script: `src/stage3/database_builder.py`
 
 - Đọc dữ liệu đặc trưng từ `src/artifacts/stage2/stage2_features.jsonl`.
+- (Mới) Có thể lọc theo manifest `dataset_index.csv` chỉ lấy `split_role=index` để tránh rò rỉ query vào kho tìm kiếm.
 - Chuẩn hóa L2 toàn bộ vector nội dung (384d) và giọng nói (192d).
 - Add vector vào:
   - `src/artifacts/stage3/content.index`
@@ -57,6 +60,14 @@ Bao gồm:
   - `voice_similarity_scores`
   - `voice_cosine_distances = 1 - similarity`
 - `content_top3`, `voice_top3` kèm tên file, đường dẫn, điểm tương đồng.
+
+## 4.1) Chạy end-to-end theo split role cho YC3
+
+Script: `src/stage3/run_requirement3_pipeline.py`
+
+- Build DB/FAISS chỉ từ `split_role=index`.
+- Tự động chạy query cho `query_seen` và `query_unseen`.
+- Lưu log từng query + log tổng hợp để đưa vào báo cáo.
 
 ## 5) Tự phản biện phạm vi
 
