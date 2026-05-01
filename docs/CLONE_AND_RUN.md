@@ -12,19 +12,6 @@
 
 Quy tắc nằm trong `.gitignore` ở root repo.
 
-## 2. Nếu trước đây đã `git add` nhầm file nặng
-
-Chỉ **gỡ khỏi Git**, file vẫn ở máy bạn:
-
-```powershell
-cd E:\THANHHOADPT\ThanhHoa
-git rm -r --cached src/Processed_Audio_Data src/Am_Thanh_Data 2>$null
-git rm -r --cached src/artifacts 2>$null
-git add .gitignore
-git commit -m "Stop tracking large audio and artifacts; rely on local regeneration"
-```
-
-Sau đó push. Người clone sẽ không kéo các blob đó (và lịch sử cũ vẫn chứa nếu đã từng commit — muốn xóa hẳn khỏi lịch sử cần `git filter-repo` hoặc repo mới).
 
 ## 3. Điều kiện môi trường
 
