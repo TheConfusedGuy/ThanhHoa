@@ -1,12 +1,42 @@
 # Python cache
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
 
 # Cursor/IDE artifacts
 .cursor/
 
-# Runtime artifacts (keep folder structure only)
+# Secrets / local env
+.env
+.env.*
+
+# Runtime artifacts (SQLite, FAISS, JSONL, logs — tái tạo bằng pipeline)
 src/artifacts/**
 !src/artifacts/stage1/.gitkeep
+!src/artifacts/stage2/.gitkeep
+!src/artifacts/stage3/.gitkeep
 !src/artifacts/faiss/.gitkeep
 !src/artifacts/eval_outputs/.gitkeep
+
+# Cache model cục bộ (nếu có tool copy vào trong repo)
+pretrained_models/
+hub/
+
+
+# --- Dữ liệu âm thanh (thường chiếm hàng GB): không nên đẩy GitHub ---
+# Tái tạo: crawl (stage1) + FFmpeg; hoặc lưu bản nén/ZIP trên Drive và ghi link trong README.
+src/Processed_Audio_Data/
+src/Am_Thanh_Data/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
