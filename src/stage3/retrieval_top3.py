@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -100,6 +101,41 @@ def build_matches(conn: sqlite3.Connection, ids: List[int], scores: List[float],
     return sorted(results, key=lambda item: item["similarity"], reverse=True)
 
 
+def export_scenario_audio_dir(
+    export_root: Path,
+    query_audio: Path,
+    content_matches: List[Dict],
+    voice_matches: List[Dict],
+    verbose: bool = True,
+) -> None:
+    """Sao chép WAV truy vấn + top-k nội dung + top-k giọng vào một thư mục kịch bản."""
+    export_root.mkdir(parents=True, exist_ok=True)
+    input_dir = export_root / "input"
+    content_dir = export_root / "top3_content"
+    voice_dir = export_root / "top3_voice"
+    for d in (input_dir, content_dir, voice_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy2(query_audio, input_dir / query_audio.name)
+
+    for row in content_matches:
+        src = Path(row.get("file_path") or "")
+        if src.is_file():
+            shutil.copy2(src, content_dir / src.name)
+        elif verbose:
+            print(f"[WARN] Bo qua top3_content (khong tim thay file): {src}")
+
+    for row in voice_matches:
+        src = Path(row.get("file_path") or "")
+        if src.is_file():
+            shutil.copy2(src, voice_dir / src.name)
+        elif verbose:
+            print(f"[WARN] Bo qua top3_voice (khong tim thay file): {src}")
+
+    if verbose:
+        print(f"[EXPORT] Thu muc WAV kich ban: {export_root.resolve()}")
+
+
 def run_query(
     query_audio: Path,
     sqlite_db: Path,
@@ -113,6 +149,7 @@ def run_query(
     verbose: bool = True,
     content_extractor: Optional[ContentFeatureExtractor] = None,
     voice_extractor: Optional[VoiceFeatureExtractor] = None,
+    export_audio_dir: Optional[Path] = None,
 ):
     if not query_audio.exists():
         raise FileNotFoundError(f"Query audio not found: {query_audio}")
@@ -196,6 +233,9 @@ def run_query(
     output_log.parent.mkdir(parents=True, exist_ok=True)
     output_log.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    if export_audio_dir is not None:
+        export_scenario_audio_dir(export_audio_dir, query_audio, content_matches, voice_matches, verbose=verbose)
+
     if verbose:
         print("\n=== PHAN 1: TOP 3 NOI DUNG GIONG NHAT ===")
         for row in content_matches:
@@ -221,6 +261,11 @@ def parse_args():
     parser.add_argument("--stt-max-duration-s", type=float, default=90.0)
     parser.add_argument("--voice-max-duration-s", type=float, default=90.0)
     parser.add_argument("--output-log", default="src/artifacts/stage3/retrieval_query_log.json")
+    parser.add_argument(
+        "--export-audio-dir",
+        default=None,
+        help="Neu dat, tao thu muc gom input/, top3_content/, top3_voice/ va sao chep WAV tuong ung.",
+    )
     return parser.parse_args()
 
 
@@ -237,4 +282,5 @@ if __name__ == "__main__":
         voice_max_duration_s=args.voice_max_duration_s,
         output_log=Path(args.output_log),
         verbose=True,
+        export_audio_dir=Path(args.export_audio_dir) if args.export_audio_dir else None,
     )
