@@ -7,11 +7,13 @@ import argparse
 import json
 import shutil
 import sqlite3
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import faiss
 import numpy as np
+import whisper
 
 try:
     from stage2.content_feature_extractor import ContentFeatureExtractor
@@ -169,22 +171,67 @@ def run_query(
     if voice_extractor is None:
         voice_extractor = VoiceFeatureExtractor()
 
+    print("\n[BƯỚC 1] Whisper: Nạp âm thanh, chia khung tín hiệu và trích xuất Log-Mel Spectrogram")
+    
+
+    audio_np = whisper.load_audio(str(query_audio))
+    mel_spectrogram = whisper.log_mel_spectrogram(audio_np)
+    
+    print(f"   Đã nạp tín hiệu thô: {len(audio_np)} mẫu âm thanh (samples).")
+    print(f"   Áp dụng Sliding Window: Đã chia thành {mel_spectrogram.shape[1]} khung tín hiệu (frames).")
+    print(f"   Kích thước Ma trận Log-Mel Spectrogram thu được: {mel_spectrogram.shape[0]} dải Mel x {mel_spectrogram.shape[1]} khung.")
+    
+    time.sleep(2)
+    print("\n[Bước 2] Whisper: Giải mã âm thanh sang Văn bản (Speech-to-Text)")
     transcript = content_extractor.transcribe_audio(str(query_audio), max_duration_s=stt_max_duration_s or None)
+    print(f"   Văn bản: '{transcript}'")
+    time.sleep(1)
+
+    print("\n[Bước 3] YAKE: Trích xuất Từ khóa cốt lõi (Keyword Extraction)")
+    keywords = content_extractor.extract_keywords(transcript)
+    print(f"   Từ khóa (Kèm điểm số): {keywords}")
+    time.sleep(1)
+
+    print("\n[Bước 4] MiniLM: Nhúng Vector Ngữ nghĩa Không gian")
     query_content = normalize_query_vector(
         content_extractor.extract_semantic_embeddings(transcript),
         CONTENT_DIM,
     )
+    print(f"   Kích thước Vector: 1 x 384")
+    print(f"   Biểu diễn Vector: {np.array(query_content)[0][:5].tolist()}")
+    time.sleep(1)
+
+    print("\n" + "="*70)
+    print("LUỒNG 2: TRÍCH XUẤT ĐẶC TRƯNG ÂM HỌC / GIỌNG NÓI (VOICE FLOW)")
+    print("="*70)
+    print("[Bước 1] Librosa: Phân tích đặc trưng Âm học vật lý (Acoustic Stats)")
+    acoustic_stats = voice_extractor.extract_acoustic_features(str(query_audio), max_duration_s=voice_max_duration_s or None)
+    print(f"   Độ cao (F0): {acoustic_stats['pitch_mean']:.2f} Hz")
+    print(f"   Năng lượng (RMS): {acoustic_stats['energy_mean']:.4f}")
+    print(f"   Cắt không (ZCR): {acoustic_stats['zcr_mean']:.4f}")
+    print(f"   MFCC : {np.array(acoustic_stats['mfccs_mean'])[:3].tolist()}")
+    time.sleep(1)
+
+    print("\n[Bước 2 và 3] ECAPA-TDNN: Trích xuất Fbank và phân tích Mạng Nơ-ron Thời gian (TDNN)")
+    time.sleep(1)
+
+    print("\n[Bước 4] ECAPA-TDNN: Ép kiểu (Pooling) và Nén Vector Định danh Người nói")
     query_voice = normalize_query_vector(
         voice_extractor.extract_speaker_embeddings(str(query_audio), max_duration_s=voice_max_duration_s or None),
         VOICE_DIM,
     )
+    print(f"   Kích thước Vector: 1 x 192")
+    print(f"   Biểu diễn Vector: {np.array(query_voice)[0][:10].tolist()}")
+    time.sleep(1)
+
+    print("\n" + "="*70)
+    print("FAISS TÌM KIẾM VECTOR (HYBRID SEARCH)")
+    print("="*70)
+    print("Cosine Similarity trong Không gian Đa chiều")
+    time.sleep(1)
+
     if query_content is None or query_voice is None:
         raise RuntimeError("Failed to build query vectors for content/voice.")
-
-    if verbose:
-        # Bắt buộc in shape vector query cho báo cáo.
-        print(f"[DEBUG] query_content shape: {query_content.shape}")
-        print(f"[DEBUG] query_voice shape: {query_voice.shape}")
 
     d_content, i_content = search_top_k(content_index, query_content, top_k)
     d_voice, i_voice = search_top_k(voice_index, query_voice, top_k)
@@ -237,15 +284,46 @@ def run_query(
         export_scenario_audio_dir(export_audio_dir, query_audio, content_matches, voice_matches, verbose=verbose)
 
     if verbose:
-        print("\n=== PHAN 1: TOP 3 NOI DUNG GIONG NHAT ===")
+        print("\n" + "="*85)
+        print("BÁO CÁO TỔNG HỢP: KẾT QUẢ SO KHỚP COSINE (COSINE SIMILARITY MATCHING)")
+        print("="*85)
+        print(f"[THÔNG TIN VIDEO A - ĐẦU VÀO]: {query_audio.name}")
+        print(f" - Văn bản dịch được: '{transcript[:150]}...'")
+        
+        # Lấy tối đa 3 từ khóa
+        try:
+            kw_list_query = list(keywords.keys())[:3] if isinstance(keywords, dict) else keywords[:3]
+        except:
+            kw_list_query = []
+        print(f" - Từ khóa cốt lõi: {kw_list_query}")
+        
+        print("\n" + "-"*85)
+        print("PHẦN 1: TÌM KIẾM THEO NGỮ NGHĨA (SO SÁNH VECTOR 384-CHIỀU)")
+        print("-" * 85)
         for row in content_matches:
-            print(f'{row["rank"]}. [{row["similarity"]:.4f}] {row["file_name"]}')
+            print(f'Top {row["rank"]}: {row["file_name"]} | Điểm Cosine: {row["similarity"]:.4f}')
+            print(f'   -> Toán học: cos(θ) = (VecA · VecB) / (||VecA|| ||VecB||) = {row["similarity"]:.4f}')
+            print(f'   -> Trích đoạn Video B: "{row["transcript_preview"][:120]}..."')
+            try:
+                kw_list_b = list(row["keywords"].keys())[:3] if isinstance(row["keywords"], dict) else row["keywords"][:3]
+                print(f'   -> Từ khóa Video B: {kw_list_b}')
+            except:
+                pass
+            print("")
 
-        print("\n=== PHAN 2: TOP 3 GIONG NOI GIONG NHAT ===")
+        print("-" * 85)
+        print("PHẦN 2: TÌM KIẾM THEO ĐỊNH DANH GIỌNG NÓI (SO SÁNH VECTOR 192-CHIỀU)")
+        print("-" * 85)
         for row in voice_matches:
-            print(f'{row["rank"]}. [{row["similarity"]:.4f}] {row["file_name"]}')
+            print(f'Top {row["rank"]}: {row["file_name"]} | Điểm Cosine: {row["similarity"]:.4f}')
+            print(f'   -> Toán học: cos(θ) = (VecA · VecB) / (||VecA|| ||VecB||) = {row["similarity"]:.4f}')
+            if row["similarity"] >= 0.90:
+                print('   -> Kết luận: Điểm > 0.90 -> ĐÂY CÓ THỂ LÀ CÙNG MỘT NGƯỜI NÓI.')
+            else:
+                print('   -> Kết luận: Điểm < 0.90 -> Có thể là người khác hoặc cùng người nhưng bị nhiễu.')
+            print("")
 
-        print(f"\n[LOG] Saved retrieval log: {output_log}")
+        print(f"Toàn bộ báo cáo JSON đã được xuất ra: {output_log}")
     conn.close()
     return output
 

@@ -63,9 +63,9 @@ def main():
         stt_max_duration_s=args.stt_max_duration_s,
         voice_max_duration_s=args.voice_max_duration_s,
         output_log=Path(args.output_log),
-        verbose=False,
+        verbose=True,  
     )
-    print_two_columns(out.get("content_top3") or [], out.get("voice_top3") or [])
+
 
 
 if __name__ == "__main__":
